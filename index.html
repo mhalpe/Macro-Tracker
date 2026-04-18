@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro Tracker</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f5f5f3;--bg3:#eeecea;
+  --text:#1a1a1a;--text2:#666660;--text3:#999994;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);
+  --danger:#E24B4A;--success:#1D9E75;--warn:#BA7517;
+  --radius:8px;--radius-lg:12px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;
+    --text:#f2f2f7;--text2:#aeaeb2;--text3:#6c6c70;
+    --border:rgba(255,255,255,0.10);--border2:rgba(255,255,255,0.20);
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh;padding:1rem}
+.app{max-width:700px;margin:0 auto;display:flex;flex-direction:column;gap:1rem}
+.card{background:var(--bg);border-radius:var(--radius-lg);padding:1.25rem;border:0.5px solid var(--border)}
+h1{font-size:18px;font-weight:500;margin-bottom:2px}
+.date-bar{display:flex;justify-content:space-between;align-items:flex-start}
+.date-label{font-size:13px;color:var(--text2)}
+.btn-sm{font-size:12px;padding:4px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:transparent;color:var(--text2);cursor:pointer}
+.btn-sm:hover{background:var(--bg2)}
+.btn-danger{color:var(--danger);border-color:rgba(226,75,74,0.4)}
+.btn-primary{color:#185FA5;border-color:rgba(24,95,165,0.4)}
+.btn-primary:hover{background:#E6F1FB}
+.macro-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:1rem}
+@media(max-width:480px){.macro-grid{grid-template-columns:repeat(2,1fr)}}
+.macro-card{background:var(--bg2);border-radius:var(--radius);padding:10px 12px}
+.mlabel{font-size:11px;color:var(--text2);margin-bottom:4px}
+.mval{font-size:20px;font-weight:500;transition:color 0.4s}
+.mval.c-green{color:#1D9E75}
+.mval.c-yellow{color:#BA7517}
+.mval.c-red{color:#E24B4A}
+.mgoal{font-size:11px;color:var(--text3);margin-top:2px}
+.mbar{height:3px;border-radius:2px;background:var(--border);margin-top:6px;overflow:hidden}
+.mfill{height:100%;border-radius:2px;transition:width 0.3s,background 0.4s}
+.section-label{font-size:11px;font-weight:500;color:var(--text2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px}
+.tabs{display:flex;gap:4px;margin-bottom:1rem;border-bottom:0.5px solid var(--border);padding-bottom:0}
+.tab{font-size:13px;padding:6px 14px;border:none;background:transparent;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tab.active{color:var(--text);border-bottom-color:var(--text)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* Quick add */
+.meal-tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.meal-tab{font-size:12px;padding:4px 12px;border:0.5px solid var(--border);border-radius:20px;background:transparent;color:var(--text2);cursor:pointer}
+.meal-tab.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.quick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.qbtn{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);padding:8px 10px;cursor:pointer;text-align:left;transition:background 0.15s;position:relative}
+.qbtn:hover{background:var(--bg2);border-color:var(--border2)}
+.qname{font-size:13px;font-weight:500;color:var(--text);display:block;margin-bottom:3px;padding-right:18px}
+.qmacros{font-size:11px;color:var(--text2)}
+.q-del{position:absolute;top:5px;right:6px;background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0;line-height:1;opacity:0}
+.qbtn:hover .q-del{opacity:1}
+.q-del:hover{color:var(--danger)}
+.no-suggestions{font-size:13px;color:var(--text3);padding:1rem 0;text-align:center}
+
+/* Entry form */
+.entry-grid{display:grid;grid-template-columns:1fr repeat(4,56px) auto;gap:6px;align-items:center;margin-bottom:6px}
+@media(max-width:580px){.entry-grid{grid-template-columns:1fr 1fr;row-gap:6px}.entry-grid input[type=text]{grid-column:1/-1}.save-q-wrap,.add-btn{grid-column:1/-1}}
+input,select{font-size:13px;height:34px;padding:0 8px;border:0.5px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);width:100%}
+input[type=number]{text-align:center}
+input:focus,select:focus{outline:none;border-color:var(--border2)}
+.col-hints{display:grid;grid-template-columns:1fr repeat(4,56px) auto;gap:6px;margin-bottom:1rem}
+.col-hint{font-size:10px;color:var(--text3);text-align:center}
+.add-btn{height:34px;padding:0 14px;border:0.5px solid var(--border2);border-radius:var(--radius);background:transparent;color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap}
+.add-btn:hover{background:var(--bg2)}
+.save-q-wrap{display:flex;align-items:center;gap:6px;margin-bottom:1rem;font-size:12px;color:var(--text2)}
+.save-q-wrap input[type=checkbox]{width:auto;height:auto;cursor:pointer}
+.meal-select-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.meal-select-row label{font-size:12px;color:var(--text2);white-space:nowrap}
+.meal-select-row select{width:auto;flex:1;max-width:160px}
+
+/* Log table */
+.log-table{width:100%;border-collapse:collapse;font-size:13px}
+.log-table th{font-size:11px;font-weight:500;color:var(--text2);text-align:left;padding:4px 8px 8px;border-bottom:0.5px solid var(--border)}
+.log-table th.r{text-align:right}
+.log-table td{padding:7px 8px;border-bottom:0.5px solid var(--border);color:var(--text);vertical-align:middle}
+.log-table td.r{text-align:right;color:var(--text2)}
+.total-row td{font-weight:500;border-top:1px solid var(--border2);border-bottom:none!important}
+.del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px 6px;border-radius:4px;line-height:1}
+.del-btn:hover{color:var(--danger);background:rgba(226,75,74,0.08)}
+.empty-state{text-align:center;padding:2rem;color:var(--text3);font-size:13px;border:0.5px dashed var(--border2);border-radius:var(--radius-lg)}
+.meal-tag{font-size:10px;padding:2px 7px;border-radius:10px;background:var(--bg2);color:var(--text2);margin-left:4px;white-space:nowrap}
+.divider{border:none;border-top:0.5px solid var(--border);margin:1rem 0}
+
+/* Advisor */
+.advisor-result{border-radius:var(--radius);padding:10px 14px;font-size:13px;line-height:1.6;margin-top:8px}
+.result-go{background:#EAF3DE;color:#27500A;border:0.5px solid #97C459}
+.result-caution{background:#FAEEDA;color:#633806;border:0.5px solid #EF9F27}
+.result-no{background:#FCEBEB;color:#791F1F;border:0.5px solid #F09595}
+.result-label{font-weight:500;font-size:14px;margin-bottom:4px}
+
+/* Timeline */
+.timeline{display:flex;flex-direction:column}
+.tl-item{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:0.5px solid var(--border)}
+.tl-item:last-child{border-bottom:none}
+.tl-time{font-size:12px;color:var(--text3);min-width:52px;padding-top:1px}
+.tl-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.tl-content{flex:1}
+.tl-name{font-size:13px;color:var(--text)}
+.tl-macros{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* Rings */
+.rings{display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;padding:0.5rem 0}
+.ring-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.ring-label{font-size:11px;color:var(--text2);text-align:center}
+
+/* History */
+.history-chart{margin-top:1rem}
+.history-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.history-date{font-size:11px;color:var(--text3);width:48px;flex-shrink:0;text-align:right}
+.history-bars{flex:1;display:flex;flex-direction:column;gap:3px}
+.h-bar-wrap{display:flex;align-items:center;gap:6px}
+.h-bar-label{font-size:10px;color:var(--text3);width:36px;text-align:right;flex-shrink:0}
+.h-bar-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.h-bar-fill{height:100%;border-radius:4px;transition:width 0.4s}
+.h-bar-val{font-size:10px;color:var(--text2);width:32px;flex-shrink:0}
+.history-empty{text-align:center;padding:2rem;color:var(--text3);font-size:13px}
+
+/* Spike warning */
+.spike-warning{background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#633806;margin-top:10px;display:none}
+.spike-warning.show{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <div class="date-bar">
+      <div><h1>Macro Tracker</h1><div class="date-label" id="today-label"></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn-sm btn-primary" onclick="saveDay()">Save day</button>
+        <button class="btn-sm btn-danger" onclick="resetDay()">Reset day</button>
+      </div>
+    </div>
+    <div class="macro-grid">
+      <div class="macro-card"><div class="mlabel">Calories</div><div class="mval" id="v-cal">0</div><div class="mgoal">/ 1,900</div><div class="mbar"><div class="mfill" id="b-cal" style="width:0%"></div></div></div>
+      <div class="macro-card"><div class="mlabel">Protein</div><div class="mval" id="v-pro">0g</div><div class="mgoal">/ 170g</div><div class="mbar"><div class="mfill" id="b-pro" style="width:0%"></div></div></div>
+      <div class="macro-card"><div class="mlabel">Carbs</div><div class="mval" id="v-carb">0g</div><div class="mgoal">/ 155g</div><div class="mbar"><div class="mfill" id="b-carb" style="width:0%"></div></div></div>
+      <div class="macro-card"><div class="mlabel">Fat</div><div class="mval" id="v-fat">0g</div><div class="mgoal">/ 67g</div><div class="mbar"><div class="mfill" id="b-fat" style="width:0%"></div></div></div>
+    </div>
+    <div id="spike-warning" class="spike-warning"><strong>Glucose spike risk:</strong> High-GI carbs logged without enough protein or fat in this meal window. Consider pairing with protein.</div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('log')">Log food</button>
+      <button class="tab" onclick="switchTab('advisor')">Should I eat this?</button>
+      <button class="tab" onclick="switchTab('timeline')">Timeline</button>
+      <button class="tab" onclick="switchTab('rings')">Progress</button>
+      <button class="tab" onclick="switchTab('history')">History</button>
+    </div>
+
+    <!-- LOG TAB -->
+    <div class="tab-panel active" id="tab-log">
+      <div class="section-label">Quick add</div>
+      <div class="meal-tabs">
+        <button class="meal-tab active" onclick="setMealFilter('all')">All</button>
+        <button class="meal-tab" onclick="setMealFilter('Meal 1')">Meal 1</button>
+        <button class="meal-tab" onclick="setMealFilter('Meal 2')">Meal 2</button>
+        <button class="meal-tab" onclick="setMealFilter('Meal 3')">Meal 3</button>
+        <button class="meal-tab" onclick="setMealFilter('Snack')">Snack</button>
+      </div>
+      <div class="quick-grid" id="quick-grid"></div>
+      <hr class="divider">
+      <div class="section-label">Custom entry</div>
+      <div class="meal-select-row">
+        <label>Meal:</label>
+        <select id="c-meal">
+          <option value="Meal 1">Meal 1</option>
+          <option value="Meal 2">Meal 2</option>
+          <option value="Meal 3">Meal 3</option>
+          <option value="Snack">Snack</option>
+        </select>
+      </div>
+      <div class="entry-grid">
+        <input type="text" id="c-name" placeholder="Food name" onkeydown="if(event.key==='Enter')addCustom()" />
+        <input type="number" id="c-cal" placeholder="Cal" min="0" />
+        <input type="number" id="c-pro" placeholder="Pro" min="0" />
+        <input type="number" id="c-carb" placeholder="Carb" min="0" />
+        <input type="number" id="c-fat" placeholder="Fat" min="0" />
+        <button class="add-btn" onclick="addCustom()">+ Add</button>
+      </div>
+      <div class="col-hints">
+        <div></div>
+        <div class="col-hint">kcal</div><div class="col-hint">pro g</div>
+        <div class="col-hint">carb g</div><div class="col-hint">fat g</div><div></div>
+      </div>
+      <div class="save-q-wrap">
+        <input type="checkbox" id="save-to-quick" />
+        <label for="save-to-quick">Save this food to Quick Add</label>
+        <span style="color:var(--text3);margin-left:4px">— assign it to a meal category below</span>
+      </div>
+      <div id="log-area"></div>
+    </div>
+
+    <!-- ADVISOR TAB -->
+    <div class="tab-panel" id="tab-advisor">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Enter a food and its macros — get a green/yellow/red verdict based on your remaining budget and spike risk.</p>
+      <div class="entry-grid" style="grid-template-columns:1fr repeat(4,56px) auto">
+        <input type="text" id="a-name" placeholder="Food name (e.g. bagel with cream cheese)" />
+        <input type="number" id="a-cal" placeholder="Cal" min="0" />
+        <input type="number" id="a-pro" placeholder="Pro" min="0" />
+        <input type="number" id="a-carb" placeholder="Carb" min="0" />
+        <input type="number" id="a-fat" placeholder="Fat" min="0" />
+        <button class="add-btn" onclick="checkFood()">Check</button>
+      </div>
+      <div class="col-hints" style="grid-template-columns:1fr repeat(4,56px) auto">
+        <div></div><div class="col-hint">kcal</div><div class="col-hint">pro g</div>
+        <div class="col-hint">carb g</div><div class="col-hint">fat g</div><div></div>
+      </div>
+      <div id="advisor-result"></div>
+      <hr class="divider">
+      <p style="font-size:12px;color:var(--text3)">Tip: if you don't know exact macros, enter your best guess — even just the carbs gives useful guidance.</p>
+    </div>
+
+    <!-- TIMELINE TAB -->
+    <div class="tab-panel" id="tab-timeline">
+      <div id="timeline-area"></div>
+    </div>
+
+    <!-- RINGS TAB -->
+    <div class="tab-panel" id="tab-rings">
+      <div class="rings" id="rings-area"></div>
+      <div id="rings-summary" style="margin-top:1rem;font-size:13px;color:var(--text2);text-align:center"></div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div class="tab-panel" id="tab-history">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <span style="font-size:13px;color:var(--text2)">Last 14 days</span>
+        <button class="btn-sm btn-danger" onclick="clearHistory()">Clear history</button>
+      </div>
+      <div id="history-area"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GOALS={cal:1900,pro:170,carb:155,fat:67};
+const GOAL_MAX={cal:1900,pro:170,carb:165,fat:70};
+
+const DEFAULT_FOODS=[
+  {name:'Almonds (1 oz)',cal:164,pro:6,carb:6,fat:14,meals:['Snack','Meal 1','Meal 2','Meal 3']},
+  {name:'Avocado (½)',cal:120,pro:1,carb:6,fat:11,meals:['Meal 1','Meal 2']},
+  {name:'Broccoli (1 cup)',cal:31,pro:3,carb:6,fat:0,meals:['Meal 2','Meal 3']},
+  {name:'Brown rice (½ cup cooked)',cal:108,pro:2,carb:22,fat:1,meals:['Meal 2','Meal 3']},
+  {name:'Chicken breast (6 oz)',cal:185,pro:39,carb:0,fat:4,meals:['Meal 1','Meal 2','Meal 3']},
+  {name:'Eggs (2 large)',cal:143,pro:13,carb:1,fat:10,meals:['Meal 1']},
+  {name:'Greek yogurt (1 cup)',cal:130,pro:17,carb:9,fat:4,meals:['Meal 1','Snack']},
+  {name:'Healthy Choice On Track',cal:250,pro:18,carb:36,fat:6,meals:['Meal 2','Meal 3']},
+  {name:"Kevin's bowl",cal:270,pro:34,carb:10,fat:10,meals:['Meal 2','Meal 3']},
+  {name:'Salmon (5 oz)',cal:233,pro:35,carb:0,fat:10,meals:['Meal 1','Meal 2','Meal 3']},
+  {name:'Steel cut oats (½ cup)',cal:150,pro:5,carb:27,fat:3,meals:['Meal 1']},
+  {name:'Strawberries (1 cup)',cal:49,pro:1,carb:12,fat:0,meals:['Meal 1','Snack']},
+  {name:'Sweet potato (½ cup)',cal:90,pro:2,carb:21,fat:0,meals:['Meal 2','Meal 3']},
+  {name:'Walnuts (1 oz)',cal:185,pro:4,carb:4,fat:18,meals:['Snack','Meal 1']},
+];
+
+const MEAL_COLORS={'Meal 1':'#378ADD','Meal 2':'#1D9E75','Meal 3':'#EF9F27','Snack':'#D85A30'};
+
+let log=JSON.parse(localStorage.getItem('mtLog3')||'[]');
+let nextId=parseInt(localStorage.getItem('mtNextId3')||'1');
+let customFoods=JSON.parse(localStorage.getItem('mtCustomFoods')||'[]');
+let history=JSON.parse(localStorage.getItem('mtHistory')||'[]');
+let mealFilter='all';
+
+function save(){
+  localStorage.setItem('mtLog3',JSON.stringify(log));
+  localStorage.setItem('mtNextId3',String(nextId));
+  localStorage.setItem('mtCustomFoods',JSON.stringify(customFoods));
+}
+
+function saveHistory(){localStorage.setItem('mtHistory',JSON.stringify(history));}
+
+function nowTime(){
+  const d=new Date();
+  return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+}
+
+function defaultMeal(){
+  const h=new Date().getHours();
+  if(h>=10&&h<12)return'Meal 1';
+  if(h>=12&&h<15)return'Meal 2';
+  if(h>=15&&h<19)return'Meal 3';
+  return'Snack';
+}
+
+function resetDay(){
+  if(confirm('Clear today\'s log?')){log=[];nextId=1;save();render();}
+}
+
+function saveDay(){
+  const t=getTotals();
+  if(t.cal===0){alert('Nothing logged today yet.');return;}
+  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  history=history.filter(h=>h.date!==today);
+  history.unshift({date:today,cal:Math.round(t.cal),pro:Math.round(t.pro),carb:Math.round(t.carb),fat:Math.round(t.fat)});
+  if(history.length>14)history=history.slice(0,14);
+  saveHistory();
+  alert('Day saved to history!');
+}
+
+function clearHistory(){
+  if(confirm('Clear all history?')){history=[];saveHistory();renderHistory();}
+}
+
+function getAllFoods(){
+  return [...DEFAULT_FOODS,...customFoods].sort((a,b)=>a.name.localeCompare(b.name));
+}
+
+function addEntry(name,cal,pro,carb,fat,meal){
+  log.push({id:nextId++,name,cal:+cal,pro:+pro,carb:+carb,fat:+fat,meal:meal||defaultMeal(),time:nowTime()});
+  save();render();
+}
+
+function removeEntry(id){log=log.filter(e=>e.id!==id);save();render();}
+
+function removeCustomFood(name){
+  if(confirm('Remove "'+name+'" from Quick Add?')){
+    customFoods=customFoods.filter(f=>f.name!==name);
+    localStorage.setItem('mtCustomFoods',JSON.stringify(customFoods));
+    buildQuickGrid();
+  }
+}
+
+function addCustom(){
+  const name=document.getElementById('c-name').value.trim();
+  const cal=parseFloat(document.getElementById('c-cal').value)||0;
+  const pro=parseFloat(document.getElementById('c-pro').value)||0;
+  const carb=parseFloat(document.getElementById('c-carb').value)||0;
+  const fat=parseFloat(document.getElementById('c-fat').value)||0;
+  const meal=document.getElementById('c-meal').value;
+  if(!name){document.getElementById('c-name').focus();return;}
+  if(document.getElementById('save-to-quick').checked){
+    const existing=customFoods.find(f=>f.name.toLowerCase()===name.toLowerCase());
+    if(!existing){
+      customFoods.push({name,cal,pro,carb,fat,meals:[meal],custom:true});
+      localStorage.setItem('mtCustomFoods',JSON.stringify(customFoods));
+      buildQuickGrid();
+    }
+    document.getElementById('save-to-quick').checked=false;
+  }
+  addEntry(name,cal,pro,carb,fat,meal);
+  ['c-name','c-cal','c-pro','c-carb','c-fat'].forEach(id=>document.getElementById(id).value='');
+}
+
+function setMealFilter(m){
+  mealFilter=m;
+  document.querySelectorAll('.meal-tab').forEach(t=>{
+    t.className='meal-tab'+(t.textContent===(m==='all'?'All':m)?' active':'');
+  });
+  buildQuickGrid();
+}
+
+function macroColor(val,goal){
+  const p=val/goal;
+  if(p>=0.95)return'c-red';
+  if(p>=0.75)return'c-yellow';
+  if(val>0)return'c-green';
+  return'';
+}
+
+function barColor(val,goal){
+  const p=val/goal;
+  if(p>=0.95)return'#E24B4A';
+  if(p>=0.75)return'#BA7517';
+  return'#1D9E75';
+}
+
+function pct(v,goal){return Math.min(Math.round(v/goal*100),100);}
+
+function getTotals(){
+  const t={cal:0,pro:0,carb:0,fat:0};
+  log.forEach(e=>{t.cal+=e.cal;t.pro+=e.pro;t.carb+=e.carb;t.fat+=e.fat;});
+  return t;
+}
+
+function spikeRisk(){
+  const byMeal={};
+  log.forEach(e=>{
+    const m=e.meal||'other';
+    if(!byMeal[m])byMeal[m]={pro:0,carb:0,fat:0};
+    byMeal[m].pro+=e.pro;byMeal[m].carb+=e.carb;byMeal[m].fat+=e.fat;
+  });
+  return Object.values(byMeal).some(m=>m.carb>25&&(m.pro+m.fat)<15);
+}
+
+function render(){
+  const t=getTotals();
+  [['cal',1900],['pro',170],['carb',155],['fat',67]].forEach(([k,goal])=>{
+    const v=Math.round(t[k]);
+    const el=document.getElementById('v-'+k);
+    el.textContent=k==='cal'?v.toLocaleString():v+'g';
+    el.className='mval '+macroColor(v,goal);
+    const bar=document.getElementById('b-'+k);
+    bar.style.width=pct(v,goal)+'%';
+    bar.style.background=barColor(v,goal);
+  });
+  document.getElementById('spike-warning').className='spike-warning'+(spikeRisk()?' show':'');
+  renderLog(t);
+  if(document.getElementById('tab-timeline').classList.contains('active'))renderTimeline();
+  if(document.getElementById('tab-rings').classList.contains('active'))renderRings(t);
+}
+
+function renderLog(t){
+  const area=document.getElementById('log-area');
+  if(!log.length){area.innerHTML='<div class="empty-state">No entries yet</div>';return;}
+  const sorted=[...log].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const rows=sorted.map(e=>{
+    const mc=MEAL_COLORS[e.meal]||'#888';
+    return`<tr>
+      <td><span style="font-size:13px">${e.name}</span><span class="meal-tag" style="background:${mc}22;color:${mc}">${e.meal}</span></td>
+      <td class="r">${Math.round(e.cal)}</td>
+      <td class="r">${Math.round(e.pro)}g</td>
+      <td class="r">${Math.round(e.carb)}g</td>
+      <td class="r">${Math.round(e.fat)}g</td>
+      <td><button class="del-btn" onclick="removeEntry(${e.id})">×</button></td>
+    </tr>`;}).join('');
+  area.innerHTML=`<table class="log-table">
+    <thead><tr><th>Food</th><th class="r">kcal</th><th class="r">pro</th><th class="r">carb</th><th class="r">fat</th><th></th></tr></thead>
+    <tbody>${rows}
+    <tr class="total-row">
+      <td>Total</td>
+      <td class="r">${Math.round(t.cal).toLocaleString()}</td>
+      <td class="r">${Math.round(t.pro)}g</td>
+      <td class="r">${Math.round(t.carb)}g</td>
+      <td class="r">${Math.round(t.fat)}g</td>
+      <td></td>
+    </tr></tbody></table>`;
+}
+
+function renderTimeline(){
+  const area=document.getElementById('timeline-area');
+  if(!log.length){area.innerHTML='<div class="empty-state">No entries logged yet</div>';return;}
+  const sorted=[...log].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  area.innerHTML='<div class="timeline">'+sorted.map(e=>{
+    const h=parseInt((e.time||'00').split(':')[0]);
+    const m=parseInt((e.time||'00:00').split(':')[1]);
+    const ampm=h>=12?'pm':'am';
+    const h12=h%12||12;
+    const ts=h12+':'+(m<10?'0':'')+m+ampm;
+    const dc=MEAL_COLORS[e.meal]||'#888';
+    return`<div class="tl-item">
+      <div class="tl-time">${ts}</div>
+      <div class="tl-dot" style="background:${dc}"></div>
+      <div class="tl-content">
+        <div class="tl-name">${e.name} <span class="meal-tag" style="background:${dc}22;color:${dc}">${e.meal}</span></div>
+        <div class="tl-macros">${Math.round(e.cal)} kcal &middot; ${Math.round(e.pro)}g P &middot; ${Math.round(e.carb)}g C &middot; ${Math.round(e.fat)}g F</div>
+      </div>
+    </div>`;}).join('')+'</div>';
+}
+
+function renderRings(t){
+  const area=document.getElementById('rings-area');
+  const macros=[
+    {label:'Calories',val:Math.round(t.cal),goal:1900,unit:'kcal'},
+    {label:'Protein',val:Math.round(t.pro),goal:170,unit:'g'},
+    {label:'Carbs',val:Math.round(t.carb),goal:155,unit:'g'},
+    {label:'Fat',val:Math.round(t.fat),goal:67,unit:'g'},
+  ];
+  const R=40,CX=52,CY=52,SW=8,circ=2*Math.PI*R;
+  area.innerHTML=macros.map(m=>{
+    const p=Math.min(m.val/m.goal,1);
+    const dash=(p*circ).toFixed(1);
+    const rc=barColor(m.val,m.goal);
+    return`<div class="ring-wrap">
+      <svg width="104" height="104" viewBox="0 0 104 104">
+        <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--border)" stroke-width="${SW}"/>
+        <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${rc}" stroke-width="${SW}"
+          stroke-dasharray="${dash} ${circ.toFixed(1)}" stroke-linecap="round" transform="rotate(-90 ${CX} ${CY})"/>
+        <text x="${CX}" y="${CY-6}" text-anchor="middle" font-size="14" font-weight="500" fill="var(--text)">${m.val}</text>
+        <text x="${CX}" y="${CY+10}" text-anchor="middle" font-size="10" fill="var(--text2)">${m.unit}</text>
+      </svg>
+      <div class="ring-label">${m.label}<br><span style="color:var(--text3)">${Math.round(p*100)}%</span></div>
+    </div>`;}).join('');
+  const rem=GOALS.pro-t.pro;
+  document.getElementById('rings-summary').textContent=
+    rem>0?`Still need ${Math.round(rem)}g protein today · ${Math.round(Math.max(0,GOALS.cal-t.cal))} kcal remaining`:'Protein goal met!';
+}
+
+function renderHistory(){
+  const area=document.getElementById('history-area');
+  if(!history.length){area.innerHTML='<div class="history-empty">No history yet — log a day and click "Save day" to record it</div>';return;}
+  const bars=[
+    {key:'cal',label:'Cal',goal:1900,color:'#378ADD'},
+    {key:'pro',label:'Pro',goal:170,color:'#1D9E75'},
+    {key:'carb',label:'Carb',goal:155,color:'#EF9F27'},
+    {key:'fat',label:'Fat',goal:67,color:'#D85A30'},
+  ];
+  area.innerHTML='<div class="history-chart">'+history.map(day=>`
+    <div class="history-bar-row">
+      <div class="history-date">${day.date}</div>
+      <div class="history-bars">
+        ${bars.map(b=>{
+          const v=day[b.key]||0;
+          const p=Math.min(Math.round(v/b.goal*100),100);
+          const bc=v>b.goal?'#E24B4A':b.color;
+          return`<div class="h-bar-wrap">
+            <div class="h-bar-label">${b.label}</div>
+            <div class="h-bar-track"><div class="h-bar-fill" style="width:${p}%;background:${bc}"></div></div>
+            <div class="h-bar-val">${v}${b.key==='cal'?'':' g'}</div>
+          </div>`;}).join('')}
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function checkFood(){
+  const name=document.getElementById('a-name').value.trim()||'This food';
+  const cal=parseFloat(document.getElementById('a-cal').value)||0;
+  const pro=parseFloat(document.getElementById('a-pro').value)||0;
+  const carb=parseFloat(document.getElementById('a-carb').value)||0;
+  const fat=parseFloat(document.getElementById('a-fat').value)||0;
+  const t=getTotals();
+  const remCal=GOAL_MAX.cal-t.cal;
+  const remCarb=GOAL_MAX.carb-t.carb;
+  const remFat=GOAL_MAX.fat-t.fat;
+  const remPro=GOAL_MAX.pro-t.pro;
+  const issues=[];const positives=[];
+  if(cal>remCal)issues.push(`puts you ${Math.round(cal-remCal)} kcal over your calorie ceiling`);
+  if(carb>remCarb)issues.push(`puts you ${Math.round(carb-remCarb)}g over your carb ceiling`);
+  if(fat>remFat)issues.push(`puts you ${Math.round(fat-remFat)}g over your fat ceiling`);
+  if(pro>=10)positives.push(`adds ${Math.round(pro)}g protein`);
+  if(carb>25&&(pro+fat)<10)issues.push('high carbs with little protein/fat — spike risk');
+  let cls,verdict,detail;
+  if(!issues.length){
+    cls='result-go';verdict='Yes — fits your plan';
+    const parts=[];
+    if(cal>0)parts.push(`uses ${Math.round(cal/GOAL_MAX.cal*100)}% of your calorie budget`);
+    if(positives.length)parts.push(positives.join(', '));
+    if(remPro-pro>0)parts.push(`you'd still need ${Math.round(remPro-pro)}g more protein`);
+    detail=parts.join('. ')+'.';
+  } else if(issues.length===1&&!issues[0].includes('ceiling')){
+    cls='result-caution';verdict='Proceed with caution';
+    detail='Issue: '+issues[0]+(positives.length?'. On the plus side: '+positives.join(', ')+'.':'. Pair with protein or fat to blunt the glucose response.');
+  } else {
+    cls='result-no';verdict='Skip it or reduce the portion';
+    detail='Problems: '+issues.join('; ')+'. Remaining budget — Cal: '+Math.round(remCal)+', Carbs: '+Math.round(remCarb)+'g, Fat: '+Math.round(remFat)+'g.';
+  }
+  document.getElementById('advisor-result').innerHTML=`<div class="advisor-result ${cls}"><div class="result-label">${verdict}</div><div>${name}${cal?' ('+Math.round(cal)+' kcal)':''}: ${detail}</div></div>`;
+}
+
+function switchTab(name){
+  const names=['log','advisor','timeline','rings','history'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.className='tab'+(names[i]===name?' active':''));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.className='tab-panel'+(p.id==='tab-'+name?' active':''));
+  if(name==='timeline')renderTimeline();
+  if(name==='rings')renderRings(getTotals());
+  if(name==='history')renderHistory();
+}
+
+function buildQuickGrid(){
+  const all=getAllFoods();
+  const filtered=mealFilter==='all'?all:all.filter(f=>f.meals&&f.meals.includes(mealFilter));
+  const grid=document.getElementById('quick-grid');
+  if(!filtered.length){grid.innerHTML='<div class="no-suggestions">No foods saved for this meal yet</div>';return;}
+  grid.innerHTML=filtered.map(f=>{
+    const isCustom=!!f.custom;
+    const safeName=f.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return`<button class="qbtn" onclick="addEntry('${safeName}',${f.cal},${f.pro},${f.carb},${f.fat},'${mealFilter==='all'?(f.meals&&f.meals[0]||defaultMeal()):mealFilter}')">
+      ${isCustom?`<button class="q-del" onclick="event.stopPropagation();removeCustomFood('${safeName}')" title="Remove">×</button>`:''}
+      <span class="qname">${f.name}</span>
+      <span class="qmacros">${f.cal} cal &middot; ${f.pro}g P &middot; ${f.carb}g C &middot; ${f.fat}g F</span>
+    </button>`;}).join('');
+}
+
+const now=new Date();
+document.getElementById('today-label').textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+document.getElementById('c-meal').value=defaultMeal();
+buildQuickGrid();
+render();
+</script>
+</body>
+</html>
